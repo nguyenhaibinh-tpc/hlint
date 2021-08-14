@@ -190,14 +190,14 @@ bracket pretty isPartialAtom root = f Nothing
     -- 'x' actually need bracketing in this context?
     f (Just (i, o, gen)) v@(remParens' -> Just x)
       | not $ needBracket i o x, not $ isPartialAtom (Just o) x =
-          rawIdea Suggestion msg (getLoc v) from to [] [r] : g x
+          rawIdea Suggestion msg (getLoc v) from (Just to) [] [r] : g x
       where
         typ = findType v
         r = Replace typ (toSS v) [("x", toSS x)] "x"
-        (from, to) = reduceJunks (pretty o) (Just (pretty (gen x)))
-        reduceJunks :: String -> Maybe String -> (String, Maybe String)
-        reduceJunks from (Just to) = (unlines st, Just $ unlines nd)
-          where (st, nd) = unzip $ filter (\ (x, y) -> x /= y) $ zip (lines from) (lines to)
+        (from, to) = reduceJunks (pretty o) (pretty (gen x))
+        reduceJunks :: String -> String -> (String, String)
+        reduceJunks from to = (unlines st, unlines nd)
+          where (st, nd) = unzip $ filter (uncurry (/=))  $ zip (lines from) (lines to)
     -- Regardless of the context, there are no parentheses to remove
     -- from 'x'.
     f _ x = g x
