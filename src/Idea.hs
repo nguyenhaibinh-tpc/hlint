@@ -74,25 +74,14 @@ showIdeaANSI = showEx hsColourConsole
 showEx :: (String -> String) -> Idea -> String
 showEx tt Idea{..} = unlines $
     [showSrcSpan ideaSpan ++ ": " ++ (if ideaHint == "" then "" else show ideaSeverity ++ ": " ++ ideaHint)] ++
-    f "Found" (Just ideaFrom') ++ f "Perhaps" ideaTo' ++
+    f "Found" (Just ideaFrom) ++ f "Perhaps" ideaTo ++
     ["Note: " ++ n | let n = showNotes ideaNote, n /= ""]
     where
-        (ideaFrom', ideaTo') = maybe (ideaFrom, Nothing) (second Just.(reduceJunk ideaFrom)) ideaTo
         f msg Nothing = []
         f msg (Just x) | null xs = [msg ++ " you should remove it."]
                        | otherwise = (msg ++ ":") : map ("  "++) xs
             where xs = lines $ tt x
 
-reduceJunk :: String -> String -> (String, String)
-reduceJunk from to =
-    let
-        (tup, rev_tup) = (***) (both lines) (both (reverse.lines)) (dupe (from, to))
-        go :: ([String], [String]) -> Int 
-        go ([], _) = 0
-        go (_, []) = 0
-        go (f : fs, t : ts) = if f == t then 1 + go (fs, ts) else 0
-        (start, end) = ( 1 `max` go tup - 1, 1 `max` go rev_tup)
-    in both (unlines.(\xs-> (xs !!) <$> [start..(length xs - end)])) tup
 
 rawIdea :: Severity -> String -> SrcSpan -> String -> Maybe String -> [Note]-> [Refactoring R.SrcSpan] -> Idea
 rawIdea = Idea [] []
