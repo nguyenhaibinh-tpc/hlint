@@ -18,6 +18,8 @@ import Prelude
 import GHC.Types.SrcLoc
 import GHC.Utils.Outputable
 import GHC.Util
+import Data.Maybe (fromMaybe, isNothing, fromJust)
+import Data.Tuple.Extra(both, (***), dupe, second)
 
 import Language.Haskell.GhclibParserEx.GHC.Utils.Outputable
 
