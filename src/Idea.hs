@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NoMonomorphismRestriction #-}
+{-# LANGUAGE RecordWildCards, NoMonomorphismRestriction, TupleSections #-}
 
 module Idea(
     Idea(..),
@@ -18,8 +18,7 @@ import Prelude
 import GHC.Types.SrcLoc
 import GHC.Utils.Outputable
 import GHC.Util
-import Data.Maybe (fromMaybe, isNothing, fromJust)
-import Data.Tuple.Extra(both, (***), dupe, second)
+import Data.Tuple.Extra (both, second)
 
 import Language.Haskell.GhclibParserEx.GHC.Utils.Outputable
 
@@ -79,22 +78,28 @@ showEx tt Idea{..} = unlines $
     f "Found" (Just ideaFrom') ++ f "Perhaps" ideaTo' ++
     ["Note: " ++ n | let n = showNotes ideaNote, n /= ""]
     where
-        (ideaFrom', ideaTo') = maybe (ideaFrom, Nothing) (second Just.(reduceJunk ideaFrom)) ideaTo
+        (ideaFrom', ideaTo') = maybe (ideaFrom, Nothing) ((second Just) . reduceJunk . (ideaFrom, )) ideaTo
         f msg Nothing = []
         f msg (Just x) | null xs = [msg ++ " you should remove it."]
                        | otherwise = (msg ++ ":") : map ("  "++) xs
             where xs = lines $ tt x
 
-reduceJunk :: String -> String -> (String, String)
-reduceJunk from to =
-    let
-        (tup, rev_tup) = (***) (both lines) (both (reverse.lines)) (dupe (from, to))
+-- traverse through hints output from both direction to take out all the excess 
+reduceJunk :: (String, String) -> (String, String)
+reduceJunk x@(from, to) =
+    let 
+        tup = both lines x; rev_tup = both (reverse. lines) x
+        -- compare each line to get the first dissimilar position
         go :: ([String], [String]) -> Int 
         go ([], _) = 0
         go (_, []) = 0
         go (f : fs, t : ts) = if f == t then 1 + go (fs, ts) else 0
-        (start, end) = ( 1 `max` go tup - 1, 1 `max` go rev_tup)
-    in both (unlines.(\xs-> (xs !!) <$> [start..(length xs - end)])) tup
+        -- subtract 1 in both version to get the corresponding above/below line for context.
+        (start, end) = (go tup - 1, go rev_tup - 1)      
+        -- extract a sub-array from l to r where r is the index in reversed version
+        extract :: [String] -> Int -> Int -> [String]
+        extract hints l r = drop l $ take (length hints - r) hints
+    in both (unlines . (\hints -> extract hints start end)) tup
 
 rawIdea :: Severity -> String -> SrcSpan -> String -> Maybe String -> [Note]-> [Refactoring R.SrcSpan] -> Idea
 rawIdea = Idea [] []
