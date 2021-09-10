@@ -84,22 +84,19 @@ showEx tt Idea{..} = unlines $
                        | otherwise = (msg ++ ":") : map ("  "++) xs
             where xs = lines $ tt x
 
--- traverse through hints output from both direction to take out all the excess 
 reduceJunk :: (String, String) -> (String, String)
 reduceJunk x@(from, to) =
     let 
-        tup = both lines x; rev_tup = both (reverse. lines) x
-        -- compare each line to get the first dissimilar position
-        go :: ([String], [String]) -> Int 
-        go ([], _) = 0
-        go (_, []) = 0
-        go (f : fs, t : ts) = if f == t then 1 + go (fs, ts) else 0
-        -- subtract 1 in both version to get the corresponding above/below line for context.
-        (start, end) = (go tup - 1, go rev_tup - 1)      
-        -- extract a sub-array from l to r where r is the index in reversed version
-        extract :: [String] -> Int -> Int -> [String]
-        extract hints l r = drop l $ take (length hints - r) hints
-    in both (unlines . (\hints -> extract hints start end)) tup
+        commonPrefix :: ([String], [String]) -> Int 
+        commonPrefix ([], _) = 0
+        commonPrefix (_, []) = 0
+        commonPrefix (f : fs, t : ts) = if f == t then 1 + commonPrefix (fs, ts) else 0  
+        tup = both lines x
+        reverseTup = both reverse tup
+        (lcp, lcs) = (commonPrefix tup - 1, commonPrefix reverseTup - 1)
+        extract :: Int -> Int -> [a] -> [a]
+        extract l r = drop l . take r
+    in both (unlines . (\hints -> extract lcp (length hints - lcs) hints)) tup
 
 rawIdea :: Severity -> String -> SrcSpan -> String -> Maybe String -> [Note]-> [Refactoring R.SrcSpan] -> Idea
 rawIdea = Idea [] []
